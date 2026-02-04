@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Image to SVG Converter</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+
+<div class="bg-white p-8 rounded-xl shadow-xl w-[480px] text-center space-y-4">
+
+  <h2 class="text-2xl font-bold">Image → SVG</h2>
+  <p class="text-gray-500 text-sm">Convert PNG/JPG to clean SVG</p>
+
+  <input type="file" id="file" class="w-full border p-2 rounded" />
+
+  <div>
+    <label class="text-sm">Threshold: <span id="tval">180</span></label>
+    <input type="range" id="threshold" min="50" max="250" value="180" class="w-full">
+  </div>
+
+  <button id="btn" onclick="convert()" 
+    class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
+    Convert
+  </button>
+
+  <div id="loading" class="hidden text-blue-600 text-sm">
+    Converting...
+  </div>
+
+  <div class="grid grid-cols-2 gap-4">
+    <div>
+      <p class="text-sm text-gray-500">Original</p>
+      <img id="original" class="border w-full" />
+    </div>
+    <div>
+      <p class="text-sm text-gray-500">SVG</p>
+      <div id="preview" class="border p-2 min-h-[120px]"></div>
+    </div>
+  </div>
+
+  <a id="download" 
+    class="hidden block bg-green-600 text-white py-2 rounded hover:bg-green-700">
+    Download SVG
+  </a>
+
+</div>
+
+<script>
+document.getElementById("threshold").oninput = e => {
+  document.getElementById("tval").innerText = e.target.value;
+};
+
+async function convert() {
+  const file = document.getElementById("file").files[0];
+  if (!file) return alert("Please select an image");
+
+  // Frontend block video
+  if (!file.type.startsWith("image/")) {
+    alert("Only image files allowed");
+    return;
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    alert("File too large (max 5MB)");
+    return;
+  }
+
+  document.getElementById("original").src = URL.createObjectURL(file);
+
+  const threshold = document.getElementById("threshold").value;
+  const btn = document.getElementById("btn");
+  const loading = document.getElementById("loading");
+
+  btn.disabled = true;
+  btn.innerText = "Processing...";
+  loading.classList.remove("hidden");
+
+  const formData = new FormData();
+  formData.append("image", file);
+  formData.append("threshold", threshold);
+
+  const res = await fetch("http://localhost:3000/convert", {
+    method: "POST",
+    body: formData
+  });
+
+  if (!res.ok) {
+    alert("Conversion failed");
+    btn.disabled = false;
+    btn.innerText = "Convert";
+    loading.classList.add("hidden");
+    return;
+  }
+
+  const svg = await res.text();
+  document.getElementById("preview").innerHTML = svg;
+
+  const blob = new Blob([svg], { type: "image/svg+xml" });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.getElementById("download");
+  link.href = url;
+  link.download = "output.svg";
+  link.classList.remove("hidden");
+  link.innerText = "Download SVG";
+
+  btn.disabled = false;
+  btn.innerText = "Convert";
+  loading.classList.add("hidden");
+}
+</script>
+
+</body>
+</html>
